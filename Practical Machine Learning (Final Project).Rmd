@@ -1,0 +1,125 @@
+---
+title: "Practical Machine Learning (Final Project)"
+author: "Varun Ginde"
+date: "21/06/2020"
+output: html_document
+---
+## Background
+
+Using devices such as Jawbone Up, Nike FuelBand, and Fitbit it is now possible to collect a large amount of data about personal activity relatively inexpensively. These type of devices are part of the quantified self movement – a group of enthusiasts who take measurements about themselves regularly to improve their health, to find patterns in their behavior, or because they are tech geeks. One thing that people regularly do is quantify how much of a particular activity they do, but they rarely quantify how well they do it. In this project, my goal will be to use data from accelerometers on the belt, forearm, arm, and dumbell of 6 participants.
+
+I aim to use a model to identify (as accurately as possible) the manner of exercise (the classe) using the given training data.
+Below are some of the libraries I will use to complete my project.
+```{r}
+library(caret)
+library(e1071)
+library(randomForest)
+library(dplyr)
+library(ggplot2)
+library(ggthemes)
+```
+
+Firstly, I read in the training and testing data which I have downloaded. The training data has close to 20000 observations and 160 columns (including classe). the first task will be to get rid of the useless ones. In this case, the first 7 columns are useless, so we get rid of them first.
+
+```{r}
+train_data = read.csv('pml-training.csv')
+final_test_data = read.csv('pml-testing.csv')
+
+train_data = select(train_data, -(1:7))
+final_test_data = select(final_test_data, -(1:7))
+```
+
+### Missing Values
+Several columns are useless because they have several missing values, so I have written code below to get rid of these columns. This is also done with both the datasets.
+
+
+```{r}
+trainData<- train_data[, colSums(is.na(train_data)) == 0]
+finalData <- final_test_data[, colSums(is.na(final_test_data)) == 0]
+```
+
+### The Training Set
+I won't touch the actual dataset. Instead, I will split the training dataset into 2 subsets, sub-training and sub-testing. I prefer a split ratio of 75%.
+
+```{r}
+set.seed(101)
+intrain = createDataPartition(trainData$classe, p = 0.75, list = 0)
+sub_train = trainData[intrain,]
+sub_test = trainData[-intrain,]
+```
+
+I also want to remove variables with zero variance (or close to zero variance). For this purpose, I have used the nzv function below.
+
+```{r}
+NZV = nzv(trainData)
+trainData = trainData[,-NZV]
+
+sub_test = sub_test[,-NZV]
+sub_train = sub_train[,-NZV]
+
+```
+
+
+## Model1 - Support Vector Machines
+The 1st model I will use is SVM. I find it extremely useful as far as accuracy is concerned.
+I have trained this model with the sub-training data and predicted the sub-test values using this trained model. The confusion matrix will show how accurate the model has been.
+
+I have used a radial kernel with gamma value 0.1 (most of the times, 0.1 tends to give the best model, for a given cost).
+
+```{r}
+modelsvm = svm(classe~., data = sub_train, kernel = 'radial', cost = 10, gamma = 0.1)
+
+pred_svm = predict(modelsvm, sub_test)
+
+confusionMatrix(pred_svm, sub_test$classe)
+
+```
+
+
+The accuracy is astoundingly good, which can be a bit suspicious at times. Which is why I will try out another model to see if we get similar results or whether SVM is actually the best method.
+
+## Model 2 - Random Forests
+Another beautiful model for classification, random forests are a great method to use for such problems. I have written code to train this model using sub-training data and predict the values for the sub-test data. Below is a plot, which shows the error rate of the random forests model varying with number of trees used.
+
+```{r}
+
+modelrf = randomForest(classe~., data = sub_train)
+
+pred_rf = predict(modelrf, sub_test)
+
+confusionMatrix(pred_rf, sub_test$classe)
+
+plot(modelrf, main = 'Accuracy of random forest model')
+```
+
+## Model 3 - Combining the 2 models
+Since the above model too provides near-perfect results (and slightly better than SVM), I have combined the two models and run an SVM on these models to get the average of the models.
+
+```{r}
+combo = data.frame(pred_svm, pred_rf, sub_test$classe)
+
+combined_model = svm(sub_test.classe~. , data = combo)
+
+pred_combined = predict(combined_model, sub_test)
+
+confusionMatrix(pred_combined, sub_test$classe)
+```
+
+This model too has near-perfect accuracy. The results are exceptionally good and it is a good indicator of how easy it is to classify this particular dataset.
+
+Below, I have plotted 2 barplots, one for the actual sub-testing classe and one for the predictions provided by model 1. This is a visual confirmation of how similar the predictions are, with the 2 graphs looking exactly the same (although there are minute differences). I haven't plotted the model 2 predictions since that will give us 3 graphs that look exactly the same. 
+
+Thus I conclude that it is slightly better to use a combination of the two models to predict the values of classe for the variables.
+```{r}
+ggplot(data = combo, aes(x = sub_test.classe)) + geom_bar(aes(fill = sub_test.classe), color = 'black') + ggtitle(label = 'Actual classes in the sub-training data') + theme(plot.title = element_text(hjust = 0.5, face = 'bold')) + theme_clean() + xlab('Classes') + ylab('Frequency') + scale_fill_manual('Actual classes', values = c('blue','sky blue','navy blue','grey90','dark blue'))
+
+
+ggplot(data = combo, aes(x = pred_svm)) + geom_bar(aes(fill = pred_svm), color = 'black') + ggtitle(label = 'Predicted classes(by SVM)') + theme(plot.title = element_text(hjust = 0.5, face = 'bold')) + theme_clean() + xlab('Classes') + ylab('Frequency') + scale_fill_manual('SVM classes', values = c('blue','sky blue','navy blue','grey90','dark blue'))
+
+```
+
+
+```{r}
+Results = predict(combined_model, finalData)
+```
+
