@@ -1,0 +1,211 @@
+---
+title: "Analysing the most expensive buys (2015-2019 )"
+author: "Varun"
+date: "10/06/2020"
+output: html_document
+---
+
+IPL has always been a source of big cash for several talented players. Teams are willing to spend maximum money to ensure their team succeeds. However, sometimes, way too much money is spent on certain players, who fail to provide the necessary output. I am going to analyse the trend. The sample of players I have chosen consists of 28 players (from 2015-2019), with at least the 5 most expensive players from each year.
+
+The players have been divided as per their type: batsman, bowler and all-rounder. The graph below shows how many of these ultra-expensive players have been bought by teams over the last 5 years. DD have bought 9 such players. That is almost 2 ultra-expensive players per season. CSK and MI don't feature in this list because even their most expensive buys in the last 5 years is not in the top 5 most expensive players. This is probably a good reason why they succeed; they have a strong base and spend comparitively little money on buying other players. They diversify instead of spending too much on 1 player.
+
+```{r,echo=FALSE}
+library(ggplot2)
+library(dplyr)
+library(ggrepel)
+library(ggthemes)
+price_data = read.csv('Player data 2015 - 2019 - Sheet1.csv')
+
+p1 = ggplot(price_data, aes(x = Team)) + geom_bar(aes(fill = Type)) + scale_y_continuous(limits = c(0,10), breaks = 0:10)
+p2 = p1 + theme_fivethirtyeight() + xlab('Teams') + ylab('No of players bought') + ggtitle(label = 'Most expensive players', subtitle = 'At least 5 players from the last 5 years (2015 - 2019)')
+p3 = p2 + theme(plot.title = element_text(hjust = 0.5, color = 'black', face = 'bold'), 
+                plot.subtitle = element_text(hjust = 0.5, color = 'tomato', face = 'italic'), 
+                panel.background = element_rect(fill = 'grey90'), 
+                panel.border = element_rect(linetype = 1,color = 'black'), 
+                legend.position = 'bottom',
+                plot.background = element_rect(fill = 'beige'),
+                axis.title.x = element_text(color = 'black'), axis.title.y = element_text(color = 'black'))
+p4 = p3 + scale_fill_manual('Type of player', values = c('sky blue','dark blue','red','orange'))
+
+print(p4) 
+```
+
+
+### Batsmen
+
+Below I have written code to analyse the nationality of batsmen. Most of these ultra-expensive batsmen are Indian. Yuvraj Singh features twice in this list for consecutive years. Spending on Indian batsmen is a bit surprising, considering how India don't play too many T20s. But then again, sometimes a quality Indian batsmen is needed for a side. Most of these batsmen are quite good T20 players. Chris Lynn, for example, was the hot cake in the market after a few exquisite BBL seasons. He was bought for Rs 9.6 crores by KKR in 2018 after a terrific IPL 2017. 
+
+```{r,echo=FALSE}
+Batsmen = select(filter(price_data, Type == 'Batsman' | Type == 'Batsman/WK'), - Wickets, - Bowling.Av, - Economy)
+#All batsmen have played 10 or more matches in their respective seasons, which makes gauging
+#their performance easier.
+b1 = ggplot(Batsmen, aes(x = Nationality)) + geom_bar(aes(fill = Nationality)) 
+b2 = b1 + ylab('Number of players bought') + ggtitle(label = 'Batsmen', subtitle = 'Most expensive batsmen in the last 5 years') + theme_fivethirtyeight()
+b3 = b2 + theme(plot.title = element_text(hjust = 0.5, face = 'bold', color = 'black'),
+                plot.subtitle = element_text(hjust = 0.5, face = 'italic', color = 'red'),
+                panel.border = element_rect(linetype = 1, color = 'black'),
+                panel.background = element_rect(fill = 'grey90'),
+                plot.background = element_rect(fill = 'beige'),
+                axis.title.x = element_text(color = 'black'), axis.title.y = element_text(color = 'black'))
+b4 = b3 + scale_fill_manual(values = c("yellow", "#281e96",'#2eb47b'))
+
+print(b4)
+```
+
+The code below is used to analyse the batsmen. I made a performance index criterion to judge the batsmen. 
+                     $$PI = \frac{SR}{100}\sqrt{Average} + MoM$$ 
+
+In T20, strike rate is a key factor. Higher average isn't necessarily desirable if the strike rate is lower than par. Which is why I have multiplied the runs per ball (effectively SR/100) with the square root of average, giving more value to the strike rate. The index is not a percentage and since I don't have any proper data to find an average value for this index, we will just compare on the basis of its magnitude. Also, number of Man of the Match awards have been added to the index in order to give more importance to match-winning performances.
+
+Very clearly, KL Rahul is a very good pick. The price tag of 11 crores is clearly justified. Although not as prominently good as Rahul, Lynn too has a good performance index and a slightly smaller price tag too. However, Yuvraj Singh (for DD in 2015) was a huge loss. They effectively wasted 16 crores on him. His performance index is well below par for that sort of price. However, the next year, Yuvraj has a better performance index (close to 6.75) for Sunrisers, at less than half his previous year price of 16 crore. Although the returns aren't great for a 7 crore price tag, they're definitely not modest either. Dinesh Karthik was in very poor touch for RCB and is definitely the poorest performer in this category.
+
+```{r, echo=FALSE}
+Batsmen_analysed = mutate(Batsmen, PerformanceIndex = sqrt(SR*SR*Batting.Av/10000) + MoM.awards)
+bl1 = ggplot(Batsmen_analysed, aes(x = Price.in.Cr..INR. , y = PerformanceIndex)) + geom_point(aes(color = Team), size = 2.5) + geom_line()
+bl2 = bl1 + theme_fivethirtyeight() + xlab('Price in crores (INR)') + ylab('Performance index') + ggtitle(label = 'Value for money of batsmen', subtitle = "Gauging performance index against players' salaries")
+bl3 = bl2 + theme(plot.title = element_text(hjust = 0.5, face = 'bold', color = 'black'),
+                  plot.subtitle = element_text(hjust = 0.5, face = 'italic', color = 'red'),
+                  panel.border = element_rect(linetype = 1, color = 'black'),
+                  panel.background = element_rect(fill = 'grey90'),
+                  plot.background = element_rect(fill = 'beige'),
+                  axis.title.x = element_text(color = 'black'), axis.title.y = element_text(color = 'black'))
+bl4 = bl3 + scale_color_manual(values = c('#872d2d','#46298d','#cc5858','red','orange')) + geom_text_repel(label = Batsmen_analysed$Player, nudge_x = 0.6, nudge_y = 0) + scale_x_continuous(limits = c(6,18), breaks = 6:18)
+print(bl4)
+```
+
+### Bowlers
+
+We next analyse the bowlers. I have filtered them into 2 datasets. One is a set of bowlers who have played equal to or more than 10 games, the other those who have played less than 10. There are 2 reasons for doing so. First one is that it's slightly unfair to compare statistics from a smaller subset. In the case before, for batsmen, all had played 10+ games.
+Second one is that if a team is spending big money on someone, that player is expected to play most of the games (purely in terms of value for money spent). If the player is out of the team (unfit or woefully out of form), it does reflect wastage of money on that player.
+
+Class I - Has all the bowlers with 10+ games. Only 5 bowlers are there, which does reflect that few bowlers play often when out of form. For the ultra-expensive batsmen, however modest their returns, they're clearly given a longer rope than bowlers who have struggled.
+We will see this more clearly after analysing both classes.
+3 of these bowlers are Indians. 
+
+```{r,echo=FALSE}
+Bowler = filter(price_data, Type == 'Bowler')
+Bowler1 = subset(select(Bowler,-SR,-Runs,-Batting.Av), Matches > 10)
+Bowler2 = subset(select(Bowler,-SR,-Runs,-Batting.Av), Matches < 10)
+Bowler1 = mutate(Bowler1, PerformanceIndex = (Wickets/Economy) + MoM.awards)
+Bowler2 = mutate(Bowler2, PerformanceIndex = (Wickets/Economy) + MoM.awards)
+
+bw1 = ggplot(data = Bowler1, aes(x = Nationality)) + geom_bar(aes(fill = Nationality))
+bw2 = bw1 + xlab("Nationality") + ylab("No of players") + ggtitle(label = 'Bowlers class I', subtitle = 'Most expensive bowlers in the last 5 years') + theme_fivethirtyeight()
+bw3 = bw2 + theme(plot.title = element_text(hjust = 0.5, face = 'bold', color = 'black'),
+                plot.subtitle = element_text(hjust = 0.5, face = 'italic', color = 'red'),
+                panel.border = element_rect(linetype = 1, color = 'black'),
+                panel.background = element_rect(fill = 'grey90'),
+                plot.background = element_rect(fill = 'beige'),
+                axis.title.x = element_text(color = 'black'), axis.title.y = element_text(color = 'black'))
+bw4 = bw3 + scale_fill_manual(values = c('dark blue',"yellow",'sky blue',"#281e96",'black','#2eb47b'))
+print(bw4)
+```
+
+ClassII - Has all the bowlers with less than 10 games. Here, too, almost half of these players are Indian. 
+
+```{r,echo=FALSE}
+bwc1 = ggplot(data = Bowler2, aes(x = Nationality)) + geom_bar(aes(fill = Nationality))
+bwc2 = bwc1 + xlab("Nationality") + ylab("No of players") + ggtitle(label = 'Bowlers class II', subtitle = 'Most expensive bowlers in the last 5 years') + theme_fivethirtyeight()
+bwc3 = bwc2 + theme(plot.title = element_text(hjust = 0.5, face = 'bold', color = 'black'),
+                  plot.subtitle = element_text(hjust = 0.5, face = 'italic', color = 'red'),
+                  panel.border = element_rect(linetype = 1, color = 'black'),
+                  panel.background = element_rect(fill = 'grey90'),
+                  plot.background = element_rect(fill = 'beige'),
+                  axis.title.x = element_text(color = 'black'), axis.title.y = element_text(color = 'black'))
+bwc4 = bwc3 + scale_fill_manual(values = c('sky blue',"#281e96",'black','#2eb47b'))
+print(bwc4)
+```
+
+
+For the bowlers, I have created another performance index. 
+                        $$PI = \frac{Wickets}{Economy} + MoM$$
+                          
+The main part of the index is the ratio of wickets to economy. Lower the economy, better the bowler and higher the index. Similarly, more the wickets, better the bowler. Yet again, Man of the Match awards have been included to give weightage to match-winning performances. Also, I couldn't decide whether wickets have more weightage or economy. Wickets are key but economical bowlers (not necessarily wicket taking ones) cause pressure, leading to more wickets, which is why I took a simple ratio of the two.
+
+```{r,echo=FALSE}
+l1 = ggplot(Bowler1, aes(x = Price.in.Cr..INR. , y = PerformanceIndex)) + geom_point(aes(color = Team), size = 2.5) + geom_line()
+l2 = l1 + theme_fivethirtyeight() + xlab('Price in crores (INR)') + ylab('Performance index') + ggtitle(label = 'Value for money of bowlers I', subtitle = "Gauging performance index against players' salaries")
+l3 = l2 + theme(plot.title = element_text(hjust = 0.5, face = 'bold', color = 'black'),
+                  plot.subtitle = element_text(hjust = 0.5, face = 'italic', color = 'red'),
+                  panel.border = element_rect(linetype = 1, color = 'black'),
+                  panel.background = element_rect(fill = 'grey90'),
+                  plot.background = element_rect(fill = 'beige'),
+                  axis.title.x = element_text(color = 'black'), axis.title.y = element_text(color = 'black'))
+l4 = l3 + scale_color_manual(values = c('#872d2d','#46298d','blue','orange')) + geom_text_repel(label = Bowler1$Player, nudge_x = 0.6, nudge_y = 0) + scale_x_continuous(limits = c(4,13), breaks = 4:13)
+print(l4)
+```
+
+I repeated the same for Class II. Very clearly, Rashid Khan was well above the rest. Considering his price, Cummins had a decent outing, although nothing too spectacular.
+Unadkat found himself being bought for big money for 2 consecutive years and underperformed miserably. It is a surprise he's in Class I for both years. 
+
+In class II, Zaheer and Boult (2 left arm speedsters coincidentally) are the leaders. Their price tag is pretty low compared to the rest. Tymal Mills was a big waste considering his price tag as well as his index. The fact that he's a class II bowler suggests how he didn't play too many games. 
+
+```{r,echo=FALSE}
+cl1 = ggplot(Bowler2, aes(x = Price.in.Cr..INR. , y = PerformanceIndex)) + geom_point(aes(color = Team), size = 2.5) + geom_line()
+cl2 = cl1 + theme_fivethirtyeight() + xlab('Price in crores (INR)') + ylab('Performance index') + ggtitle(label = 'Value for money of bowlers II', subtitle = "Gauging performance index against players' salaries")
+cl3 = cl2 + theme(plot.title = element_text(hjust = 0.5, face = 'bold', color = 'black'),
+                plot.subtitle = element_text(hjust = 0.5, face = 'italic', color = 'red'),
+                panel.border = element_rect(linetype = 1, color = 'black'),
+                panel.background = element_rect(fill = 'grey90'),
+                plot.background = element_rect(fill = 'beige'),
+                axis.title.x = element_text(color = 'black'), axis.title.y = element_text(color = 'black'))
+cl4 = cl3 + scale_color_manual(values = c('#872d2d','#46298d','purple','red','orange')) + geom_text_repel(label = Bowler2$Player, nudge_x = 0.6, nudge_y = 0) + scale_x_continuous(limits = c(3,13), breaks = 3:13)
+print(cl4)
+```
+
+### All rounders
+
+The most prized category. Notice the player distribution and you won't see a single Indian.
+This is an indicator of how teams value a quality all-rounder. It also shows how many quality Indian all-rounders are up for grabs (not too many). An all-rounder provides flexibility to the side.
+
+```{r, echo=FALSE}
+Allrounders = filter(price_data, Type == 'All-rounder')
+Allrounders = filter(Allrounders, Matches > 8)
+Allrounders = mutate(Allrounders, PerformanceIndex = sqrt(sqrt(SR*SR*Batting.Av/10000)*Wickets/Economy) + MoM.awards)
+
+a1 = ggplot(data = Allrounders, aes(x = Nationality)) + geom_bar(aes(fill = Nationality))
+a2 = a1 + xlab("Nationality") + ylab("No of players") + ggtitle(label = 'All rounders', subtitle = 'Most expensive all rounders in the last 5 years') + theme_fivethirtyeight()
+a3 = a2 + theme(plot.title = element_text(hjust = 0.5, face = 'bold', color = 'black'),
+                  plot.subtitle = element_text(hjust = 0.5, face = 'italic', color = 'red'),
+                  panel.border = element_rect(linetype = 1, color = 'black'),
+                  panel.background = element_rect(fill = 'grey90'),
+                  plot.background = element_rect(fill = 'beige'),
+                  axis.title.x = element_text(color = 'black'), axis.title.y = element_text(color = 'black'))
+a4 = a3 + scale_fill_manual(values = c("yellow",'sky blue','navy blue','#2eb47b'))
+print(a4)
+```
+
+The code below compares the all-rounders. I formulated a performance index for this purpose.                           
+                              $$I1 = \frac{SR}{100}\sqrt{Average}$$
+                              $$I2 = \frac{Wickets}{Economy}$$
+                              $$PI = \sqrt{I1*I2} + MoM$$
+
+If you notice, I1 is part of the batting index and I2 that of the bowling index. I took a square root of their product and added the Man of the Match awards to it. The index gives equal weightage to batting and bowling (powers of I1 and I2 are the same). Shane Watson had a terrible time with the bat in 2016 when he was purchased for Rs 9.5 crore. But he took 20 wickets. So his bowling, in a way, compensated for his batting. RPS paid a whopping Rs 14.5 crore for Ben Stokes in 2017 but boy, did he make good of it. Similarly, Chris Morris was a great buy and much cheaper than Stokes. 
+
+However, like Yuvraj among batsmen and Unadkat among bowlers, Stokes features a 2nd time in this graph. At a slightly lower price, he provided very modest returns and had an off season for RR. Curran has decent returns whereas Maxwell and Mathews had forgettable seasons. Their low returns are coincidentally for the same team DD. Even the other end of this spectrum, Chris Morris, played for DD.
+
+```{r, echo = FALSE}
+al1 = ggplot(Allrounders, aes(x = Price.in.Cr..INR. , y = PerformanceIndex)) + geom_point(aes(color = Team), size = 2.5) + geom_line()
+al2 = al1 + theme_fivethirtyeight() + xlab('Price in crores (INR)') + ylab('Performance index') + ggtitle(label = 'Value for money of all rounders', subtitle = "Gauging performance index against players' salaries")
+al3 = al2 + theme(plot.title = element_text(hjust = 0.5, face = 'bold', color = 'black'),
+                plot.subtitle = element_text(hjust = 0.5, face = 'italic', color = 'red'),
+                panel.border = element_rect(linetype = 1, color = 'black'),
+                panel.background = element_rect(fill = 'grey90'),
+                plot.background = element_rect(fill = 'beige'),
+                axis.title.x = element_text(color = 'black'), axis.title.y = element_text(color = 'black'))
+al4 = al3 + scale_color_manual(values = c('#872d2d','#46298d','red','violet','#46298d')) + geom_text_repel(label = Allrounders$Player, nudge_x = 0.6, nudge_y = 0) + scale_x_continuous(limits = c(6,15), breaks = 6:15)
+print(al4)
+```
+
+The following statistics are a good indicator of how most of these ultra-expensive players tend to underperform. Some (like KL Rahul, Ben Stokes, Chris Morris and Rashid Khan) are completely worth it. Few provide average returns and most have a poor performance index in their respective categories. This is a very good lesson for teams to not spend too much money on one player. It is a gamble that more often than not, hasn't paid off in the past.
+
+If you have reached the end of this report without skipping anything, thank you for your patience. Next time I will try to analyse the most underrated players in the IPL.
+
+Sources:
+https://www.iplt20.com/auction
+
+https://www.espncricinfo.com/ci/engine/series/index.html?search=Indian+Premier+League;view=season
+
+https://www.kaggle.com/manasgarg/ipl?select=matches.csv
+
+
